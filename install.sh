@@ -122,6 +122,18 @@ if [[ "$TARGET" == "claude" ]]; then
         cp -r "$SCRIPT_DIR/templates/." "$TEMPLATES_DEST/"
     fi
 
+    # Install hooks
+    if [[ -f "$SCRIPT_DIR/hooks/hooks.json" ]]; then
+        echo "Installing hooks config -> $HOME/.claude/hooks.json"
+        cp "$SCRIPT_DIR/hooks/hooks.json" "$HOME/.claude/hooks.json"
+    fi
+    if [[ -d "$SCRIPT_DIR/scripts/hooks" ]]; then
+        HOOKS_DEST="$HOME/.claude/scripts/hooks"
+        echo "Installing hook scripts -> $HOOKS_DEST/"
+        mkdir -p "$HOOKS_DEST"
+        cp -r "$SCRIPT_DIR/scripts/hooks/." "$HOOKS_DEST/"
+    fi
+
     echo "Done. Rules installed to $DEST_DIR/"
     echo "      Agents, commands, skills, and templates installed to $HOME/.claude/"
 fi
