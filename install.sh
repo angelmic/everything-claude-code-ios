@@ -50,22 +50,10 @@ if [[ "$TARGET" != "claude" && "$TARGET" != "cursor" && "$TARGET" != "antigravit
     exit 1
 fi
 
-# --- Usage ---
+# --- Usage / Default to swift ---
 if [[ $# -eq 0 ]]; then
-    echo "Usage: $0 [--target <claude|cursor|antigravity>] <language> [<language> ...]"
-    echo ""
-    echo "Targets:"
-    echo "  claude       (default) — Install rules to ~/.claude/rules/"
-    echo "  cursor       — Install rules, agents, skills, commands, and MCP to ./.cursor/"
-    echo "  antigravity  — Install configs to .agent/"
-    echo ""
-    echo "Available languages:"
-    for dir in "$RULES_DIR"/*/; do
-        name="$(basename "$dir")"
-        [[ "$name" == "common" ]] && continue
-        echo "  - $name"
-    done
-    exit 1
+    echo "No language specified — defaulting to 'swift'."
+    set -- swift
 fi
 
 # --- Claude target (existing behavior) ---
@@ -100,7 +88,42 @@ if [[ "$TARGET" == "claude" ]]; then
         cp -r "$lang_dir/." "$DEST_DIR/$lang/"
     done
 
+    # Install agents
+    if [[ -d "$SCRIPT_DIR/agents" ]]; then
+        AGENTS_DEST="${DEST_DIR%/rules}/../.claude/agents"
+        AGENTS_DEST="$(cd "$(dirname "$AGENTS_DEST")" 2>/dev/null && pwd)/$(basename "$AGENTS_DEST")" 2>/dev/null || AGENTS_DEST="$HOME/.claude/agents"
+        AGENTS_DEST="$HOME/.claude/agents"
+        echo "Installing agents -> $AGENTS_DEST/"
+        mkdir -p "$AGENTS_DEST"
+        cp -r "$SCRIPT_DIR/agents/." "$AGENTS_DEST/"
+    fi
+
+    # Install commands
+    if [[ -d "$SCRIPT_DIR/commands" ]]; then
+        COMMANDS_DEST="$HOME/.claude/commands"
+        echo "Installing commands -> $COMMANDS_DEST/"
+        mkdir -p "$COMMANDS_DEST"
+        cp -r "$SCRIPT_DIR/commands/." "$COMMANDS_DEST/"
+    fi
+
+    # Install skills
+    if [[ -d "$SCRIPT_DIR/skills" ]]; then
+        SKILLS_DEST="$HOME/.claude/skills"
+        echo "Installing skills -> $SKILLS_DEST/"
+        mkdir -p "$SKILLS_DEST"
+        cp -r "$SCRIPT_DIR/skills/." "$SKILLS_DEST/"
+    fi
+
+    # Install templates
+    if [[ -d "$SCRIPT_DIR/templates" ]]; then
+        TEMPLATES_DEST="$HOME/.claude/templates"
+        echo "Installing templates -> $TEMPLATES_DEST/"
+        mkdir -p "$TEMPLATES_DEST"
+        cp -r "$SCRIPT_DIR/templates/." "$TEMPLATES_DEST/"
+    fi
+
     echo "Done. Rules installed to $DEST_DIR/"
+    echo "      Agents, commands, skills, and templates installed to $HOME/.claude/"
 fi
 
 # --- Cursor target ---

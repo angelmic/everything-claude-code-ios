@@ -22,7 +22,14 @@
     "opencode",
     "codex",
     "presentations",
-    "slides"
+    "slides",
+    "swift",
+    "ios",
+    "tvos",
+    "macos",
+    "xcode",
+    "swiftui",
+    "uikit"
   ],
   "author": {
     "name": "Affaan Mustafa",
@@ -73,6 +80,7 @@
     "scripts/setup-package-manager.js",
     "scripts/skill-create-output.js",
     "skills/",
+    "templates/",
     "AGENTS.md",
     ".claude-plugin/plugin.json",
     ".claude-plugin/README.md",
