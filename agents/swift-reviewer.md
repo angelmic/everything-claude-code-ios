@@ -36,6 +36,12 @@ When invoked:
 - **Retain cycles in Combine pipelines**: Missing `[weak self]` in `sink`/`map` closures with `store(in:)`
 - **Leaked observations**: NotificationCenter observers not removed
 
+### CRITICAL — Task + [weak self] (Four Scenarios)
+- **Task in class method**: MUST use `[weak self]` — Task captures self strongly
+- **Task in struct/SwiftUI View**: No `[weak self]` needed — value types have no retain cycles
+- **Task in actor**: No `[weak self]` needed — actor-isolated
+- **Task.detached in class**: MUST use `[weak self]` — no implicit isolation
+
 ### HIGH — Error Handling
 - **Force unwraps** (`!`): On optionals that can be nil at runtime
 - **Force try** (`try!`): On throwing functions that can fail
@@ -79,10 +85,30 @@ swift test --enable-code-coverage
 xcodebuild build -scheme <scheme> -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1
 ```
 
+### HIGH — tvOS Focus Engine
+- **Missing focusable modifiers**: Interactive elements without `.focusable()`
+- **Focus traps**: UI states where focus cannot escape in one or more directions
+- **Undersized targets**: Touch targets below 66×66 points
+- **Missing focus effects**: No visual differentiation between focused/unfocused states
+
+## Definition of Done
+
+- [ ] All tests pass
+- [ ] No CRITICAL or HIGH review issues
+- [ ] Build succeeds without new warnings
+- [ ] Public API has `///` documentation
+- [ ] No force unwraps on external data
+- [ ] Proper `[weak self]` usage per four-scenario rules
+- [ ] Accessibility labels on interactive elements
+- [ ] tvOS focus navigation verified (if tvOS target)
+
 ## Approval Criteria
 
 - **Approve**: No CRITICAL or HIGH issues
 - **Warning**: MEDIUM issues only
 - **Block**: CRITICAL or HIGH issues found
 
-For detailed Swift patterns and examples, see `skill: swiftui-patterns`, `skill: apple-platform-patterns`, `skill: swift-concurrency-6-2`.
+## Integration Points
+- **`gitea` skill** — leave review comments on PRs (`tea pulls review`)
+
+For detailed Swift patterns and examples, see `skill: swiftui-patterns`, `skill: apple-platform-patterns`, `skill: swift-concurrency-6-2`, `skill: ios-memory-safety`, `skill: xctest-nimble-patterns`.
