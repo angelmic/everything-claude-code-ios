@@ -147,7 +147,80 @@ func testLoginFlow() {
 swift test --enable-code-coverage
 ```
 
+## XCTest + Nimble
+
+For projects using XCTest with the Nimble matcher framework:
+
+### SUT Naming Convention
+- `sut` — primary system under test
+- `sut2`, `sut3` — for comparison or multi-instance tests
+
+### AAA Pattern
+```swift
+func test_loadItems_whenSuccess_shouldPopulateList() {
+    // Arrange
+    let sut = ItemListViewModel(repository: MockItemRepository(result: .success(.sample)))
+
+    // Act
+    sut.loadItems()
+
+    // Assert
+    expect(sut.items).to(haveCount(3))
+    expect(sut.state).to(equal(.loaded))
+}
+```
+
+### Test Naming: `test_<method>_<condition>_<expected>()`
+```swift
+func test_login_whenPasswordEmpty_shouldShowError()
+func test_fetchUser_whenNetworkFails_shouldReturnCachedData()
+func test_addToCart_whenItemExists_shouldIncrementQuantity()
+```
+
+### Mock Naming
+| Pattern | Usage |
+|---------|-------|
+| `Mock<Protocol>` | Controllable test double |
+| `Happy<Name>` | Always returns success |
+| `Dummy<Name>` | Unused dependency placeholder |
+| `Spy<Name>` | Records calls for verification |
+
+### Nimble Async
+```swift
+// waitUntil for callback-based async
+waitUntil(timeout: .seconds(5)) { done in
+    sut.fetch { result in
+        expect(result).toNot(beNil())
+        done()
+    }
+}
+
+// toEventually for polling-based async
+sut.startLoading()
+expect(sut.state).toEventually(equal(.ready), timeout: .seconds(3))
+```
+
+### Retain Cycle Testing
+```swift
+func test_viewModel_shouldNotLeak() {
+    var sut: MyViewModel? = MyViewModel(service: mockService)
+    weak var weakRef = sut
+    sut?.startObserving()
+    sut = nil
+    expect(weakRef).to(beNil())
+}
+```
+
+### Anti-Patterns
+- **Testing implementation, not behavior** — test what it does, not how
+- **Shared mutable state between tests** — use fresh `setUp` for each test
+- **Force unwrapping in tests** — use `try XCTUnwrap()` or Nimble's `unwrap()`
+- **Testing private methods** — test through public API instead
+- **Giant test methods** — one assertion focus per test
+
 ## Reference
 
 - See skill: `swift-protocol-di-testing` for protocol-based dependency injection and mock patterns with Swift Testing.
 - See skill: `swift-testing-tdd` for comprehensive testing patterns and TDD workflow.
+- See skill: `xctest-nimble-patterns` for comprehensive XCTest + Nimble matcher patterns.
+- See skill: `ios-memory-safety` for retain cycle testing patterns.
