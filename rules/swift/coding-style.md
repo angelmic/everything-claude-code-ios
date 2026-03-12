@@ -38,6 +38,71 @@ func load(id: String) throws(LoadError) -> Item {
 }
 ```
 
+## Guard-Let Style
+
+`guard let ... else` 左右括號不同行，即使 body 只有一行 `return`/`throw`/`continue`：
+```swift
+guard let user = currentUser else {
+    return
+}
+```
+
+Multi-line guard for complex conditions:
+```swift
+guard
+    let user = currentUser,
+    user.isActive,
+    let token = user.authToken
+else {
+    throw AuthError.notAuthenticated
+}
+```
+
+## Control Flow
+
+- Prefer `switch` over multiple `if-else` chains
+- Exhaustive `switch` — avoid `default` when possible to get compiler warnings on new cases
+
+## Boolean Naming
+
+Use predicate prefixes: `isEnabled`, `hasValue`, `canSubmit`, `shouldRefresh`
+
+## Safe Casting
+
+- Use `as?` — NEVER `as!` for downcasting
+- Forbid implicitly unwrapped optionals (`!`) except for `@IBOutlet`
+
+## Trailing Closures
+
+Use trailing closure syntax for the last closure parameter:
+```swift
+UIView.animate(withDuration: 0.3) {
+    view.alpha = 1.0
+}
+```
+
+## MARK Comments
+
+Organize files with `// MARK: -` sections:
+```swift
+// MARK: - Properties
+// MARK: - Lifecycle
+// MARK: - Public Methods
+// MARK: - Private Methods
+// MARK: - Protocol Conformance
+```
+
+## Documentation
+
+Use `///` for all `public` and `open` API:
+```swift
+/// Loads the user profile for the given identifier.
+/// - Parameter id: The unique user identifier.
+/// - Returns: The user profile.
+/// - Throws: `ProfileError.notFound` if no profile exists.
+public func loadProfile(id: String) throws(ProfileError) -> Profile
+```
+
 ## Concurrency
 
 Enable Swift 6 strict concurrency checking. Prefer:
