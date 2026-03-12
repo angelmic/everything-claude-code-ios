@@ -166,6 +166,26 @@
         "description": "Warn about console.log statements after edits"
       },
       {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:edit:swift-format\" \"scripts/hooks/post-edit-swift-format.js\" \"standard,strict\""
+          }
+        ],
+        "description": "Auto-format Swift files after edits (SwiftFormat or swift-format)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/run-with-flags.js\" \"post:edit:swift-lint\" \"scripts/hooks/post-edit-swift-lint.js\" \"standard,strict\""
+          }
+        ],
+        "description": "SwiftLint check after editing .swift files"
+      },
+      {
         "matcher": "*",
         "hooks": [
           {
