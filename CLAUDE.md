@@ -40,6 +40,43 @@ The project is organized into several core components:
 - `/build-fix` - Fix build errors
 - `/learn` - Extract patterns from sessions
 - `/skill-create` - Generate skills from git history
+- `/swift-build` - Swift/Xcode build
+- `/swift-review` - Swift code review
+- `/swift-test` - Swift test runner
+- `/xcode-debug` - Xcode debugging, simulator management, DerivedData cleanup
+- `/accessibility-check` - VoiceOver, Dynamic Type, tvOS Focus audit
+- `/ios-release` - Version bump, changelog, release checklist
+
+## iOS Governance Model
+
+The project includes a full iOS development governance model with specialized agents:
+
+- **ios-orchestrator** — coordinates the PLAN→APPROVED→EXECUTE→REVIEW→DONE lifecycle
+- **ios-product-owner** — Feature Briefs, KPIs, acceptance gates
+- **ios-product-pm** — Story Map, INVEST stories, release slicing
+- **ios-tech-pm** — WBS, module mapping, risk/spike management
+- **ios-architecture** — ADRs, Mermaid diagrams, API design
+- **ios-coder** — TDD implementation (RED→GREEN→REFACTOR)
+- **ios-collaboration-protocol** — agent coordination rules and approval gates
+- **swift-reviewer** — code review with Task+[weak self] rules, tvOS Focus, DoD
+
+### Tool Chain Integration
+
+Agents integrate with the user's existing tools:
+- `ios-commit` skill — structured commit workflow
+- `gitea` skill — PR management via `tea` CLI
+- `/pjm` — project management dashboard
+- `jira` skill — issue tracking
+- `updateStringKeyFiles` — localization management
+- `crashlytics` / `confluence` toolSpecs — crash analysis and release notes
+
+### Templates
+
+`templates/` contains reusable templates for iOS projects:
+- `ios-bug-report.md` — structured bug report
+- `ios-story.md` — user story with Gherkin AC
+- `ios-task.md` — technical task breakdown
+- `release-checklist.md` — pre/post-release verification
 
 ## Development Notes
 

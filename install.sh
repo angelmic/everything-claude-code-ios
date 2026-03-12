@@ -14,4 +14,236 @@ while [ -L "$SCRIPT_PATH" ]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-exec node "$SCRIPT_DIR/scripts/install-apply.js" "$@"
+# --- Parse --target flag ---
+TARGET="claude"
+if [[ "${1:-}" == "--target" ]]; then
+    if [[ -z "${2:-}" ]]; then
+        echo "Error: --target requires a value (claude or cursor)" >&2
+        exit 1
+    fi
+    TARGET="$2"
+    shift 2
+fi
+
+if [[ "$TARGET" != "claude" && "$TARGET" != "cursor" && "$TARGET" != "antigravity" ]]; then
+    echo "Error: unknown target '$TARGET'. Must be 'claude', 'cursor', or 'antigravity'." >&2
+    exit 1
+fi
+
+# --- Usage / Default to swift ---
+if [[ $# -eq 0 ]]; then
+    echo "No language specified — defaulting to 'swift'."
+    set -- swift
+fi
+
+# --- Claude target (existing behavior) ---
+if [[ "$TARGET" == "claude" ]]; then
+    DEST_DIR="${CLAUDE_RULES_DIR:-$HOME/.claude/rules}"
+
+    # Warn if destination already exists (user may have local customizations)
+    if [[ -d "$DEST_DIR" ]] && [[ "$(ls -A "$DEST_DIR" 2>/dev/null)" ]]; then
+        echo "Note: $DEST_DIR/ already exists. Existing files will be overwritten."
+        echo "      Back up any local customizations before proceeding."
+    fi
+
+    # Always install common rules
+    echo "Installing common rules -> $DEST_DIR/common/"
+    mkdir -p "$DEST_DIR/common"
+    cp -r "$RULES_DIR/common/." "$DEST_DIR/common/"
+
+    # Install each requested language
+    for lang in "$@"; do
+        # Validate language name to prevent path traversal
+        if [[ ! "$lang" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo "Error: invalid language name '$lang'. Only alphanumeric, dash, and underscore allowed." >&2
+            continue
+        fi
+        lang_dir="$RULES_DIR/$lang"
+        if [[ ! -d "$lang_dir" ]]; then
+            echo "Warning: rules/$lang/ does not exist, skipping." >&2
+            continue
+        fi
+        echo "Installing $lang rules -> $DEST_DIR/$lang/"
+        mkdir -p "$DEST_DIR/$lang"
+        cp -r "$lang_dir/." "$DEST_DIR/$lang/"
+    done
+
+    # Install agents
+    if [[ -d "$SCRIPT_DIR/agents" ]]; then
+        AGENTS_DEST="${DEST_DIR%/rules}/../.claude/agents"
+        AGENTS_DEST="$(cd "$(dirname "$AGENTS_DEST")" 2>/dev/null && pwd)/$(basename "$AGENTS_DEST")" 2>/dev/null || AGENTS_DEST="$HOME/.claude/agents"
+        AGENTS_DEST="$HOME/.claude/agents"
+        echo "Installing agents -> $AGENTS_DEST/"
+        mkdir -p "$AGENTS_DEST"
+        cp -r "$SCRIPT_DIR/agents/." "$AGENTS_DEST/"
+    fi
+
+    # Install commands
+    if [[ -d "$SCRIPT_DIR/commands" ]]; then
+        COMMANDS_DEST="$HOME/.claude/commands"
+        echo "Installing commands -> $COMMANDS_DEST/"
+        mkdir -p "$COMMANDS_DEST"
+        cp -r "$SCRIPT_DIR/commands/." "$COMMANDS_DEST/"
+    fi
+
+    # Install skills
+    if [[ -d "$SCRIPT_DIR/skills" ]]; then
+        SKILLS_DEST="$HOME/.claude/skills"
+        echo "Installing skills -> $SKILLS_DEST/"
+        mkdir -p "$SKILLS_DEST"
+        cp -r "$SCRIPT_DIR/skills/." "$SKILLS_DEST/"
+    fi
+
+    # Install templates
+    if [[ -d "$SCRIPT_DIR/templates" ]]; then
+        TEMPLATES_DEST="$HOME/.claude/templates"
+        echo "Installing templates -> $TEMPLATES_DEST/"
+        mkdir -p "$TEMPLATES_DEST"
+        cp -r "$SCRIPT_DIR/templates/." "$TEMPLATES_DEST/"
+    fi
+
+    echo "Done. Rules installed to $DEST_DIR/"
+    echo "      Agents, commands, skills, and templates installed to $HOME/.claude/"
+fi
+
+# --- Cursor target ---
+if [[ "$TARGET" == "cursor" ]]; then
+    DEST_DIR=".cursor"
+    CURSOR_SRC="$SCRIPT_DIR/.cursor"
+
+    echo "Installing Cursor configs to $DEST_DIR/"
+
+    # --- Rules ---
+    echo "Installing common rules -> $DEST_DIR/rules/"
+    mkdir -p "$DEST_DIR/rules"
+    # Copy common rules (flattened names like common-coding-style.md)
+    if [[ -d "$CURSOR_SRC/rules" ]]; then
+        for f in "$CURSOR_SRC/rules"/common-*.md; do
+            [[ -f "$f" ]] && cp "$f" "$DEST_DIR/rules/"
+        done
+    fi
+
+    # Install language-specific rules
+    for lang in "$@"; do
+        # Validate language name to prevent path traversal
+        if [[ ! "$lang" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo "Error: invalid language name '$lang'. Only alphanumeric, dash, and underscore allowed." >&2
+            continue
+        fi
+        if [[ -d "$CURSOR_SRC/rules" ]]; then
+            found=false
+            for f in "$CURSOR_SRC/rules"/${lang}-*.md; do
+                if [[ -f "$f" ]]; then
+                    cp "$f" "$DEST_DIR/rules/"
+                    found=true
+                fi
+            done
+            if $found; then
+                echo "Installing $lang rules -> $DEST_DIR/rules/"
+            else
+                echo "Warning: no Cursor rules for '$lang' found, skipping." >&2
+            fi
+        fi
+    done
+
+    # --- Agents ---
+    if [[ -d "$CURSOR_SRC/agents" ]]; then
+        echo "Installing agents -> $DEST_DIR/agents/"
+        mkdir -p "$DEST_DIR/agents"
+        cp -r "$CURSOR_SRC/agents/." "$DEST_DIR/agents/"
+    fi
+
+    # --- Skills ---
+    if [[ -d "$CURSOR_SRC/skills" ]]; then
+        echo "Installing skills -> $DEST_DIR/skills/"
+        mkdir -p "$DEST_DIR/skills"
+        cp -r "$CURSOR_SRC/skills/." "$DEST_DIR/skills/"
+    fi
+
+    # --- Commands ---
+    if [[ -d "$CURSOR_SRC/commands" ]]; then
+        echo "Installing commands -> $DEST_DIR/commands/"
+        mkdir -p "$DEST_DIR/commands"
+        cp -r "$CURSOR_SRC/commands/." "$DEST_DIR/commands/"
+    fi
+
+    # --- Hooks ---
+    if [[ -f "$CURSOR_SRC/hooks.json" ]]; then
+        echo "Installing hooks config -> $DEST_DIR/hooks.json"
+        cp "$CURSOR_SRC/hooks.json" "$DEST_DIR/hooks.json"
+    fi
+    if [[ -d "$CURSOR_SRC/hooks" ]]; then
+        echo "Installing hook scripts -> $DEST_DIR/hooks/"
+        mkdir -p "$DEST_DIR/hooks"
+        cp -r "$CURSOR_SRC/hooks/." "$DEST_DIR/hooks/"
+    fi
+
+    # --- MCP Config ---
+    if [[ -f "$CURSOR_SRC/mcp.json" ]]; then
+        echo "Installing MCP config -> $DEST_DIR/mcp.json"
+        cp "$CURSOR_SRC/mcp.json" "$DEST_DIR/mcp.json"
+    fi
+
+    echo "Done. Cursor configs installed to $DEST_DIR/"
+fi
+
+# --- Antigravity target ---
+if [[ "$TARGET" == "antigravity" ]]; then
+    DEST_DIR=".agent"
+    
+    if [[ -d "$DEST_DIR/rules" ]] && [[ "$(ls -A "$DEST_DIR/rules" 2>/dev/null)" ]]; then
+        echo "Note: $DEST_DIR/rules/ already exists. Existing files will be overwritten."
+        echo "      Back up any local customizations before proceeding."
+    fi
+
+    # --- Rules ---
+    echo "Installing common rules -> $DEST_DIR/rules/"
+    mkdir -p "$DEST_DIR/rules"
+    if [[ -d "$RULES_DIR/common" ]]; then
+        for f in "$RULES_DIR/common"/*.md; do
+            if [[ -f "$f" ]]; then
+                cp "$f" "$DEST_DIR/rules/common-$(basename "$f")"
+            fi
+        done
+    fi
+
+    for lang in "$@"; do
+        # Validate language name to prevent path traversal
+        if [[ ! "$lang" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo "Error: invalid language name '$lang'. Only alphanumeric, dash, and underscore allowed." >&2
+            continue
+        fi
+        lang_dir="$RULES_DIR/$lang"
+        if [[ ! -d "$lang_dir" ]]; then
+            echo "Warning: rules/$lang/ does not exist, skipping." >&2
+            continue
+        fi
+        
+        echo "Installing $lang rules -> $DEST_DIR/rules/"
+        for f in "$lang_dir"/*.md; do
+            if [[ -f "$f" ]]; then
+                cp "$f" "$DEST_DIR/rules/${lang}-$(basename "$f")"
+            fi
+        done
+    done
+
+    # --- Workflows (Commands) ---
+    if [[ -d "$SCRIPT_DIR/commands" ]]; then
+        echo "Installing commands -> $DEST_DIR/workflows/"
+        mkdir -p "$DEST_DIR/workflows"
+        cp -r "$SCRIPT_DIR/commands/." "$DEST_DIR/workflows/"
+    fi
+
+    # --- Skills and Agents ---
+    mkdir -p "$DEST_DIR/skills"
+    if [[ -d "$SCRIPT_DIR/agents" ]]; then
+        echo "Installing agents -> $DEST_DIR/skills/"
+        cp -r "$SCRIPT_DIR/agents/." "$DEST_DIR/skills/"
+    fi
+    if [[ -d "$SCRIPT_DIR/skills" ]]; then
+        echo "Installing skills -> $DEST_DIR/skills/"
+        cp -r "$SCRIPT_DIR/skills/." "$DEST_DIR/skills/"
+    fi
+    
+    echo "Done. Antigravity configs installed to $DEST_DIR/"
+fi
