@@ -2,68 +2,54 @@
 
 ## When to Use
 
-Use this skill when managing an iOS/tvOS app release: version bumping, changelog, submission checklist, and post-release monitoring.
+Use this skill during iOS/tvOS release workflows, triggered by `/ios-release` or when the user requests a build and upload to TestFlight or App Store.
 
-## How It Works
+## Build Target Matrix
 
-### Release Pipeline
+| Target | Platform | Make Command |
+|--------|----------|--------------|
+| TestFlight | iOS | `make iosbuildtf` |
+| TestFlight | tvOS | `make tvosbuildtf` |
+| App Store | iOS | `make iosbuildstore` |
+| App Store | tvOS | `make tvosbuildstore` |
+| Test | All | `make test` |
 
-```
-Feature Freeze → RC Branch → QA → Version Bump → Changelog → Submit → Monitor
-```
+**These are the ONLY allowed build commands.** Never substitute with `xcodebuild`, `fastlane`, or any other alternative.
 
-### Step 1: Feature Freeze
-- Create release branch: `release/X.Y.Z`
-- Only bug fixes allowed after this point
-- Cherry-pick critical fixes from main
+## Mandatory Rules
 
-### Step 2: Version Bump
-Update version in:
-- Xcode project settings (MARKETING_VERSION, CURRENT_PROJECT_VERSION)
-- Package.swift (if SPM library)
-- Info.plist (if manual management)
+1. **tvOS build prompt**: `"App with name CATCHPLAY-tvOS not found, create one? (y/n)"` → always answer **`n`**
+2. **Both mode order**: tvOS first, then iOS
+3. **Build failure**: stop immediately, do not continue to next platform
 
-### Step 3: Changelog
-Generate from git history:
-```bash
-git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" --no-merges
-```
+## Environment Requirements
 
-Organize by category: Added, Changed, Fixed, Removed.
+- Run `unset DEVELOPER_DIR` before any build command
+- All build commands require **1800000ms timeout** (30 minutes)
+- Prefix every make command with `unset DEVELOPER_DIR &&`
 
-### Step 4: Release Checklist
-See `/ios-release` command for full checklist.
+## Version Management
 
-### Step 5: Post-Release Monitoring
-- **Crash rate**: Monitor via Crashlytics or Xcode Organizer
-- **User reviews**: Check App Store Connect
-- **Performance metrics**: MetricKit data
+Version numbers are stored in Fastlane environment files:
 
-## Integration Points
+| Platform | File | Field |
+|----------|------|-------|
+| iOS | `fastlane/.env.ios` | `APP_VERSION` |
+| tvOS | `fastlane/.env.tvos` | `APP_VERSION` |
 
-- **`jira` skill** — GISS release tracking, close release issues
-- **`confluence` toolSpec** — publish Release Notes
-- **`crashlytics` toolSpec** — monitor crash-free rate
-- **`/ios-release` command** — execute release steps
+Before building, verify that `APP_VERSION` matches the intended release version.
 
-## Examples
+## 2FA Handling
 
-### Standard Release
-```
-1. Create release/2.1.0 branch
-2. Run QA regression suite
-3. Bump MARKETING_VERSION to 2.1.0
-4. Generate changelog from git log
-5. Archive and submit to App Store Connect
-6. Tag: git tag -a v2.1.0 -m "Release 2.1.0"
-7. Monitor crash-free rate for 48 hours
-```
+Fastlane may trigger Apple ID 2FA during upload. When the build output shows a 2FA prompt:
+1. Immediately notify the user
+2. Wait for the user to provide the verification code
+3. Pass the code to the running process
 
-### Hotfix Release
-```
-1. Branch from release tag: hotfix/2.1.1
-2. Fix critical bug with TDD
-3. Cherry-pick to main
-4. Bump to 2.1.1, submit expedited review
-5. Monitor crash-free rate
-```
+## Dry Run
+
+The `/ios-release --dry-run` flag runs through all validation steps (version check, .env alignment, optional test) but stops before actual build execution. Useful for verifying configuration without uploading.
+
+## Reference
+
+See `/ios-release` command for the full interactive workflow.
