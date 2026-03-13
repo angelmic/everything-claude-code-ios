@@ -30,21 +30,55 @@ This command is the counterpart to `/save-session`.
 If no argument provided:
 
 1. Check `~/.claude/sessions/`
-2. Pick the most recently modified `*-session.tmp` file
+2. List the 10 most recently modified `*-session.tmp` files (sorted by modification time, newest first)
 3. If the folder does not exist or has no matching files, tell the user:
    ```
    No session files found in ~/.claude/sessions/
    Run /save-session at the end of a session to create one.
    ```
    Then stop.
+4. If only 1 file exists, load it directly (skip the list)
+5. If multiple files exist, **display a selection list** and wait for user input (see "Session List Display" below)
 
 If an argument is provided:
 
 - If it looks like a date (`YYYY-MM-DD`), search `~/.claude/sessions/` for files matching
   `YYYY-MM-DD-session.tmp` (legacy format) or `YYYY-MM-DD-<shortid>-session.tmp` (current format)
-  and load the most recently modified variant for that date
+  - If only 1 match: load it directly
+  - If multiple matches: display a selection list (see "Session List Display" below)
 - If it looks like a file path, read that file directly
 - If not found, report clearly and stop
+
+#### Session List Display
+
+When displaying a session list, read the **first 15 lines** of each file to extract metadata:
+
+**Extraction rules:**
+- Look for `**Project:**` → use the value as Project (trim to max 20 chars)
+- Look for `**Topic:**` → use the value as Topic (trim to max 40 chars)
+- If no `**Project:**` found but file has `### Tasks` section → Project = `(auto)`, Topic = first task item text
+- If neither found → Project = `(unknown)`, Topic = `(no topic)`
+- Extract date from filename pattern `YYYY-MM-DD`
+
+**Display format:**
+
+```
+Available sessions:
+════════════════════════════════════════════════════════════════════════
+#   Date        Project              Topic
+─── ────────── ──────────────────── ────────────────────────────────────
+1.  2026-03-13  cpvpn                CLI VPN 工具完整開發歷程...
+2.  2026-03-13  (auto)               Overflow test
+3.  2026-03-13  (unknown)            (no topic)
+════════════════════════════════════════════════════════════════════════
+Which session? (enter number, or "cancel" to skip)
+```
+
+**After display:**
+- Wait for the user to enter a number or "cancel"
+- If the user enters a valid number, load that session file
+- If the user enters "cancel", stop without loading
+- If the user enters an invalid number, re-prompt
 
 ### Step 2: Read the entire session file
 
@@ -95,7 +129,7 @@ If no next step is defined — ask the user where to start, and optionally sugge
 ## Edge Cases
 
 **Multiple sessions for the same date** (`2024-01-15-session.tmp`, `2024-01-15-abc123de-session.tmp`):
-Load the most recently modified matching file for that date, regardless of whether it uses the legacy no-id format or the current short-id format.
+Display the session selection list (see "Session List Display" in Step 1) so the user can pick the correct one. If only one match exists, load it directly.
 
 **Session file references files that no longer exist:**
 Note this during the briefing — "⚠️ `path/to/file.ts` referenced in session but not found on disk."
